@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 # Information on the package
 [project]
-name = "bem_model"
+name = "windbem"
 description = "A package that can be used for blade element momentum (BEM) wind turbine modelling"
 requires-python = ">= 3.11"
 readme = "README.md"

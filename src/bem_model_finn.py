@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from scipy.interpolate import interp1d
+import matplotlib.pyplot as plt
 
 class BEMTurbineModel:
     """
@@ -19,7 +20,7 @@ class BEMTurbineModel:
         B (int): Number of blades
     """
     
-    def __init__(self, blade_file, operational_file, polar_dir, rho=1.225):
+    def __init__(self, blade_file, operational_file, polar_dir, rho=1.225, blade_rad=120, no_blades=3):
         """
         Initialize the BEM turbine model with input data.
         
@@ -31,29 +32,85 @@ class BEMTurbineModel:
         """
         # Load blade geometry data
         self.blade_data = self._load_blade_data(blade_file)
-        self.R = self.blade_data['BlSpn'].max()  # Rotor radius
+        self.blade_rad = blade_rad
         
         # Load operational strategy data
         self.operational_data = self._load_operational_data(operational_file)
         
         # Load airfoil polar data
         self.polar_data = self._load_polar_data(polar_dir)
-        
         # Set constants
         self.rho = rho
-        self.B = 3  # Number of blades for IEA 15MW turbine
+        self.no_blades = no_blades  # Number of blades for IEA 15MW turbine
+      
+    def import_af_shapes(self, af_coords_file_path=None):
+        """
+        Imports coordinates of airfoil shapes from .txt files.
+        Returns:
+        - af_coords (list): List of normalized x-y coordinates of airfoil shapes [-].
+        """
+        if af_coords_file_path is None:
+            af_coords_file_path = list(Path('inputs/IEA-15-240-RWT/Airfoils/').glob('IEA-15-240-RWT_AF*.*'))
+        af_coords = []
+        for file in af_coords_file_path:
+            x, y = np.loadtxt(file, skiprows=8, unpack=True)
+            af_coords.append([x, y])
+        return af_coords
+
+    def plot_af_shapes(self, af_coords=None):
+        """
+        Plots airfoil shapes in one figure.
+        Parameters:
+        - af_coords (list): List of normalized x-y coordinates of airfoil shapes [-].
+        """
+        if af_coords is None:
+           af_coords = self.import_af_shapes()
+        num = len(af_coords) 
+
+        # Plot the data
+        plt.figure(figsize=(8, 6))
+        for i, data in enumerate(af_coords):
+            x = data[0]
+            y = data[1]
+            plt.plot(x, y, marker='o', linestyle='-', markersize=4, label=f"Airfoil Shape {i+1}")
+
+        # Formatting
+        plt.xlabel("X Coordinate")
+        plt.ylabel("Y Coordinate")
+        plt.title(f"Airfoil profiles (n={num})")
+        #plt.legend()
+        plt.grid(True)
+        plt.axis("equal")
+
+        plt.show()
         
-    def _load_blade_data(self, file_path):
-        """Load blade geometry data from file."""
-        column_names = ['BlSpn', 'BlCrvAC', 'BlSwpAC', 'BlCrvAng', 'BlTwist', 
-                       'BlChord', 'BlAFID', 'BlCb', 'BlCenBn', 'BlCenBt']
-        return pd.read_csv(file_path, sep=r'\s+', skiprows=6, names=column_names)
+
+    def _load_blade_data(self, aerodyn_file_path, skiprow_num=6, aerodyn_names = None):
+        """Load blade geometry data from file."""   
+        if aerodyn_names is None:
+            aerodyn_names_ = ['BlSpn', 'BlCrvAC', 'BlSwpAC', 'BlCrvAng', 'BlTwist', 'BlChord', 
+                            'BlAFID','BlCb', 'BlCenBn', 'BlCenBt']
+        else:
+            aerodyn_names_ = aerodyn_names
+        
+        aerodyn15_df = pd.read_csv(aerodyn_file_path, sep=r'\s+', skiprows=skiprow_num, 
+                        names=aerodyn_names_)
+        return aerodyn15_df
     
-    def _load_operational_data(self, file_path):
+    
+    
+    def _load_operational_data(self, onshore_file_path, skiprow_num=1, onshore_names = None):
         """Load operational strategy data from file."""
-        column_names = ['wind_speed', 'pitch', 'rot_speed', 'aero_power', 'aero_thrust']
-        return pd.read_csv(file_path, sep=r'\s+', skiprows=1, names=column_names)
+        if onshore_names is None:
+            onshore_names_ = ['wind_speed', 'pitch', 'rot_speed', 'aero_power', 'aero_thrust']
+        else:
+            onshore_names_ = onshore_names
+            
+        onshore_15mw_df = pd.read_csv(onshore_file_path, sep=r'\s+', skiprows=skiprow_num, 
+                            names=onshore_names_)
+        return onshore_15mw_df
     
+
     def _load_polar_data(self, dir_path):
         """Load airfoil polar data from directory."""
         polar_files = list(Path(dir_path).glob('*Polar*.dat'))
@@ -63,9 +120,11 @@ class BEMTurbineModel:
             try:
                 # Extract airfoil index from filename
                 af_index = int(file.name.split('_')[-1].split('.')[0])
+                # the file names start from 0 but they correspond to an af_index 1 higher
+                af_index +=1
                 
                 # Load data
-                data = pd.read_csv(file, sep=r'\s+', comment='!', 
+                data = pd.read_csv(file, sep=r'\s+', skiprows=54, 
                                  names=['Alpha', 'Cl', 'Cd', 'Cm'])
                 
                 polar_data.append({
@@ -75,6 +134,7 @@ class BEMTurbineModel:
                     'Cd': data['Cd'].values,
                     'Cm': data['Cm'].values
                 })
+                
             except (ValueError, IndexError):
                 continue
                 
@@ -91,21 +151,18 @@ class BEMTurbineModel:
         Returns:
             tuple: (Cl, Cd) lift and drag coefficients
         """
-        # Find the polar data for this airfoil
-        polar = next((p for p in self.polar_data if p['af_index'] == af_id), None)
-        if polar is None:
-            raise ValueError(f"Airfoil ID {af_id} not found in polar data")
+        
+        polar = next((p for p in self.polar_data if p['af_index'] == int(af_id)), None)
         
         # Create interpolation functions
-        cl_interp = interp1d(polar['Alpha'], polar['Cl'], kind='linear', 
-                            bounds_error=False, fill_value='extrapolate')
-        cd_interp = interp1d(polar['Alpha'], polar['Cd'], kind='linear',
-                            bounds_error=False, fill_value='extrapolate')
+        cl_interp = np.interp(alpha, polar['Alpha'], polar['Cl'])
+        cd_interp = np.interp(alpha, polar['Alpha'], polar['Cd'])
         
-        return float(cl_interp(alpha)), float(cd_interp(alpha))
+        return cl_interp, cd_interp
+       
     
     def solve_bem_element(self, r, V0, theta_p, omega, a_init=0.0, a_prime_init=0.0, 
-                         tol=1e-6, max_iter=100):
+                         tol=1e-8, max_iter=1000):
         """
         Solve BEM equations for a single blade element.
         
@@ -116,20 +173,22 @@ class BEMTurbineModel:
             omega (float): Rotational speed (rad/s)
             a_init (float, optional): Initial guess for axial induction. Default 0.
             a_prime_init (float, optional): Initial guess for tangential induction. Default 0.
-            tol (float, optional): Convergence tolerance. Default 1e-6.
-            max_iter (int, optional): Maximum iterations. Default 100.
+            tol (float, optional): Convergence tolerance. Default 1e-8.
+            max_iter (int, optional): Maximum iterations. Default 1000.
             
         Returns:
             dict: Solution containing induction factors, forces, and flow angles
         """
         # Get blade geometry at this radial position
-        blade_props = self._get_blade_properties(r)
-        c = blade_props['BlChord']
-        twist = blade_props['BlTwist']
-        af_id = blade_props['BlAFID']
+        idx = np.argmin(np.abs(self.blade_data['BlSpn'] - r))
+    
+        # Get blade geometry at this radial position
+        c = self.blade_data.iloc[idx]['BlChord']
+        twist = self.blade_data.iloc[idx]['BlTwist']
+        af_id = self.blade_data.iloc[idx]['BlAFID']
         
         # Local solidity
-        sigma = (self.B * c) / (2 * np.pi * r)
+        sigma = (self.no_blades * c) / (2 * np.pi * r)
         
         # Initialize induction factors
         a = a_init
@@ -146,20 +205,18 @@ class BEMTurbineModel:
             alpha = np.rad2deg(phi) - (theta_p + twist)
             
             # Step 4: Get Cl and Cd
-            try:
-                Cl, Cd = self.get_cl_cd(af_id, alpha)
-            except ValueError:
-                Cl, Cd = 0.0, 0.0  # Handle cases where alpha is out of polar range
-            
+            Cl, Cd = self.get_cl_cd(af_id, alpha)
+                 
             # Step 5: Compute normal and tangential coefficients
             Cn = Cl * np.cos(phi) + Cd * np.sin(phi)
             Ct = Cl * np.sin(phi) - Cd * np.cos(phi)
             
+            
             # Step 6: Update induction factors
-            denominator_a = 4 * np.sin(phi)**2 / (sigma * Cn) if sigma * Cn != 0 else 1e10
+            denominator_a = 4 * np.sin(phi)**2 / (sigma * Cn)
             a = 1 / (denominator_a + 1)
             
-            denominator_a_prime = 4 * np.sin(phi) * np.cos(phi) / (sigma * Ct) if sigma * Ct != 0 else 1e10
+            denominator_a_prime = 4 * np.sin(phi) * np.cos(phi) / (sigma * Ct) 
             a_prime = 1 / (denominator_a_prime - 1)
             
             # Check convergence
@@ -184,61 +241,39 @@ class BEMTurbineModel:
             'dM': dM
         }
     
-    def _get_blade_properties(self, r):
-        """Get blade properties at given radial position using linear interpolation."""
-        # Find the two closest radial stations
-        idx = np.searchsorted(self.blade_data['BlSpn'].values, r)
-        
-        if idx == 0:
-            return self.blade_data.iloc[0].to_dict()
-        elif idx == len(self.blade_data):
-            return self.blade_data.iloc[-1].to_dict()
-        
-        # Interpolate between the two closest stations
-        r1 = self.blade_data.iloc[idx-1]
-        r2 = self.blade_data.iloc[idx]
-        
-        # Linear interpolation factor
-        f = (r - r1['BlSpn']) / (r2['BlSpn'] - r1['BlSpn'])
-        
-        # Interpolate all properties
-        props = {}
-        for col in self.blade_data.columns:
-            if col == 'BlAFID':  # Airfoil ID - round to nearest integer
-                props[col] = round(r1[col] + f * (r2[col] - r1[col]))
-            else:
-                props[col] = r1[col] + f * (r2[col] - r1[col])
-        
-        return props
-    
     def compute_rotor_performance(self, V0, theta_p=None, omega=None):
         """
         Compute overall rotor performance for given operating conditions.
         
         Args:
             V0 (float): Wind speed (m/s)
-            theta_p (float, optional): Pitch angle (deg). If None, uses optimal from operational data.
-            omega (float, optional): Rotational speed (rad/s). If None, uses optimal from operational data.
-            
+                        
         Returns:
             dict: Performance metrics including power, thrust, torque, and coefficients
         """
         # Get operational parameters if not provided
-        if theta_p is None or omega is None:
-            op_params = self.get_optimal_operational_params(V0)
-            theta_p = theta_p if theta_p is not None else op_params['pitch']
-            omega = omega if omega is not None else np.deg2rad(op_params['rot_speed'] * (2*np.pi/60))
+        idx = np.argmin(np.abs(self.operational_data['wind_speed'] - V0))
         
-        # Discretize blade into elements (using blade data stations)
-        r_stations = self.blade_data['BlSpn'].values
-        dr = np.diff(r_stations)
-        r_elements = r_stations[:-1] + dr/2  # Midpoints between stations
+        theta_p = self.operational_data.iloc[idx]['pitch']
+        # Convert from rpm to rad/s
+        omega = self.operational_data.iloc[idx]['rot_speed'] * (2*np.pi/60)
+        
+        # Get spans greater than 0
+        r_elements = self.blade_data['BlSpn'].values
+        r_elements = r_elements[r_elements > 0]  
         
         # Solve BEM for each element
         results = []
-        for r, delta_r in zip(r_elements, dr):
+        for i in range(len(r_elements)):
+            r = r_elements[i]
             elem_result = self.solve_bem_element(r, V0, theta_p, omega)
-            elem_result['dr'] = delta_r
+            # dr is the difference between the current and next span
+            # unless it is the last element in which case its the last and end of rotor
+            if i < (len(r_elements)-1):
+                elem_result['dr'] = r_elements[i+1] - r_elements[i]
+            else:
+                elem_result['dr'] = self.blade_rad - r_elements[i]
+                
             results.append(elem_result)
         
         # Integrate to get total thrust and torque
@@ -247,7 +282,7 @@ class BEMTurbineModel:
         total_power = total_torque * omega
         
         # Compute coefficients
-        A = np.pi * self.R**2  # Rotor area
+        A = np.pi * self.blade_rad**2  
         CT = total_thrust / (0.5 * self.rho * A * V0**2)
         CP = total_power / (0.5 * self.rho * A * V0**3)
         
@@ -263,24 +298,8 @@ class BEMTurbineModel:
             'element_results': results
         }
     
-    def get_optimal_operational_params(self, V0):
-        """
-        Get optimal pitch angle and rotational speed for given wind speed.
-        
-        Args:
-            V0 (float): Wind speed (m/s)
-            
-        Returns:
-            dict: Optimal pitch angle (deg) and rotational speed (rpm)
-        """
-        # Find closest wind speed in operational data
-        idx = np.argmin(np.abs(self.operational_data['wind_speed'] - V0))
-        return {
-            'pitch': self.operational_data.iloc[idx]['pitch'],
-            'rot_speed': self.operational_data.iloc[idx]['rot_speed']
-        }
     
-    def compute_power_curve(self, V0_range=None, n_points=20):
+    def compute_power_curve(self):
         """
         Compute power and thrust curves over a range of wind speeds.
         
@@ -291,14 +310,8 @@ class BEMTurbineModel:
         Returns:
             DataFrame: Power curve data with columns for wind speed, power, thrust, etc.
         """
-        # Determine wind speed range
-        if V0_range is None:
-            V0_min = self.operational_data['wind_speed'].min()
-            V0_max = self.operational_data['wind_speed'].max()
-        else:
-            V0_min, V0_max = V0_range
-        
-        V0_values = np.linspace(V0_min, V0_max, n_points)
+        # Determine wind speed range        
+        V0_values = self.operational_data['wind_speed']
         
         # Compute performance at each wind speed
         results = []
