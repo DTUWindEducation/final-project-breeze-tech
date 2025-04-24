@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# Information on the package
+[project]
+name = "windbem"
+description = "A package that can be used for blade element momentum (BEM) wind turbine modelling"
+requires-python = ">= 3.11"
+readme = "README.md"
+version = "0.0.1"
+authors = [
+    { name = "Finn Pulsford", email = "s247264@student.dtu.dk" },
+    { name = "Hubert Przeor", email = "s242914@student.dtu.dk" },
+    { name = "Irene Gonzalez Lujan", email = "s250310@student.dtu.dk" }
+]
+dependencies = [
+    "matplotlib",
+    "numpy",
+    "scipy",
+    "pytest"
+]
+
+[project.urls]
+Repository = "https://github.com/DTUWindEducation/final-project-breeze-tech"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]

@@ -19,26 +19,46 @@ import matplotlib.pyplot as plt
 onshore_15mw_file_path = 'inputs/IEA-15-240-RWT/IEA_15MW_RWT_Onshore.opt'
 aerodyn15_file_path = 'inputs/IEA-15-240-RWT/IEA-15-240-RWT_AeroDyn15_blade.dat'
 
-onshore_names = ['wind_speed', 'pitch', 'rot_speed', 'aero_power', 'aero_thrust']
-onshore_15mw_df = pd.read_csv(onshore_15mw_file_path, sep=r'\s+', skiprows=1, 
-                    names=onshore_names)
-#print(onshore_15mw_df.head())
-plt.plot(onshore_15mw_df['wind_speed'], onshore_15mw_df['aero_thrust'])
-plt.xlabel('Wind Speed (m/s)')
-plt.ylabel('Aero Thrust (kn)')
-plt.title('Wind Speed vs Aero Thrust')
-plt.show()
 
-aerodyn_names = ['BlSpn', 'BlCrvAC', 'BlSwpAC', 'BlCrvAng', 'BlTwist', 'BlChord', 'BlAFID',
-                 'BlCb', 'BlCenBn', 'BlCenBt']
-aerodyn15_df = pd.read_csv(aerodyn15_file_path, sep=r'\s+', skiprows=6, 
-                    names=aerodyn_names)
-#print(aerodyn15_df.head())
-plt.plot(aerodyn15_df['BlSpn'], aerodyn15_df['BlCrvAC'])
-plt.xlabel('BlSpn (m)')
-plt.ylabel('BlCrvAC (deg)')
-plt.title('BlSpn vs BlCrvAC')
-plt.show()
+def import_opt_strat(onshore_file_path, skiprow_num=1, onshore_names = None):
+    if onshore_names is None:
+        onshore_names_ = ['wind_speed', 'pitch', 'rot_speed', 'aero_power', 'aero_thrust']
+    else:
+        onshore_names_ = onshore_names
+        
+    onshore_15mw_df = pd.read_csv(onshore_file_path, sep=r'\s+', skiprows=skiprow_num, 
+                        names=onshore_names_)
+    
+    return onshore_15mw_df
+
+def plot_aerodyn(onshore_15mw_df, x_col_name, y_col_name, x_axis_name, y_axis_name, title_name):
+    plt.plot(onshore_15mw_df[x_col_name], onshore_15mw_df[y_col_name])
+    plt.xlabel(x_axis_name)
+    plt.ylabel(y_axis_name)
+    plt.title(title_name)
+    plt.show()
+
+
+def import_bld_data(aerodyn_file_path, skiprow_num=6, aerodyn_names = None):
+    
+    if aerodyn_names is None:
+        aerodyn_names_ = ['BlSpn', 'BlCrvAC', 'BlSwpAC', 'BlCrvAng', 'BlTwist', 'BlChord', 
+                          'BlAFID','BlCb', 'BlCenBn', 'BlCenBt']
+    else:
+        aerodyn_names_ = aerodyn_names
+    
+    aerodyn15_df = pd.read_csv(aerodyn_file_path, sep=r'\s+', skiprows=skiprow_num, 
+                    names=aerodyn_names_)
+    
+    return aerodyn15_df
+
+
+def plot_aerodyn(aerodyn15_df, x_col_name, y_col_name, x_axis_name, y_axis_name, title_name):
+    plt.plot(aerodyn15_df[x_col_name], aerodyn15_df[y_col_name])
+    plt.xlabel(x_axis_name)
+    plt.ylabel(y_axis_name)
+    plt.title(title_name)
+    plt.show()
 
 # Hubert - Airfoils/IEA-15-240-RWT_AF00_Coords.txt
 
