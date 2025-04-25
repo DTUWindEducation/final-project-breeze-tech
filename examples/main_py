@@ -5,18 +5,17 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
 #from bem_model import BEMTurbineModel
-from bem_model_finn import BEMTurbineModel
+from compute import BEMTurbineModel
 
 import matplotlib.pyplot as plt
 
 def main():
     # Initialize the BEM model with data files
     bem_model = BEMTurbineModel(
-        blade_file='inputs/IEA-15-240-RWT/IEA-15-240-RWT_AeroDyn15_blade.dat',
-        operational_file='inputs/IEA-15-240-RWT/IEA_15MW_RWT_Onshore.opt',
-        polar_dir='inputs/IEA-15-240-RWT/Airfoils/'
+        blade_file ='inputs/IEA-15-240-RWT/IEA-15-240-RWT_AeroDyn15_blade.dat',
+        operational_file ='inputs/IEA-15-240-RWT/IEA_15MW_RWT_Onshore.opt',
+        polar_dir ='inputs/IEA-15-240-RWT/Airfoils/'
     )
-    
     # Compute performance at a specific wind speed
     V0 = 10  # m/s
     performance = bem_model.compute_rotor_performance(V0)
