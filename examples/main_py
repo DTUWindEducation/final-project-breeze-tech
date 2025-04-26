@@ -2,7 +2,7 @@ import sys
 import os
 
 # uncomment the line below if you don't have the package installed
-# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
 #from bem_model import BEMTurbineModel
 from windbem import BEMTurbineModel
@@ -22,7 +22,7 @@ def main():
     print(f"At {V0} m/s wind speed:")
     print(f"Power: {performance['power']/1e3:.2f} kW")
     print(f"Thrust: {performance['thrust']/1e3:.2f} kN")
-    print(f"Power coefficient: {performance['CP']:.3f}")
+    print(f"Power coefficient: {performance['power_coef']:.3f}")
     
     # Compute and plot power curve
     power_curve = bem_model.compute_power_curve()
@@ -32,7 +32,7 @@ def main():
     plt.figure(figsize=(12, 5))
     
     plt.subplot(1, 2, 1)
-    plt.plot(power_curve['V0'], power_curve['power']/1e3, color = "blue", label = "BEM Power")
+    plt.plot(power_curve['v0'], power_curve['power']/1e3, color = "blue", label = "BEM Power")
     plt.plot(true_wind, true_pow, color = "red", label = "True Power")
     plt.legend()    
     plt.xlabel('Wind Speed [m/s]')
@@ -41,7 +41,7 @@ def main():
     plt.grid(True)
     
     plt.subplot(1, 2, 2)
-    plt.plot(power_curve['V0'], power_curve['thrust']/1e3, color = "blue", label = "BEM Thrust")
+    plt.plot(power_curve['v0'], power_curve['thrust']/1e3, color = "blue", label = "BEM Thrust")
     plt.plot(true_wind, true_thr, color = "red", label = "True Thrust")
     plt.legend()
     plt.xlabel('Wind Speed [m/s]')
