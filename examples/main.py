@@ -1,10 +1,9 @@
-import sys
-import os
+# Uncomment the 3 lines below if you don't have the package installed
+#import sys
+#import os
+#sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
-# uncomment the line below if you don't have the package installed
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
-
-#from bem_model import BEMTurbineModel
+# Import custom package
 from windbem import BEMTurbineModel
 
 import matplotlib.pyplot as plt
