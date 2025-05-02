@@ -1,8 +1,9 @@
-from .data_io import BEMDataLoader
-from .compute import BEMTurbineModel
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+from .data_io import BEMDataLoader
+from .compute import BEMTurbineModel
+
 
 # Protection incase fomeone does from windbem import *
 __all__ = ['BEMDataLoader', 'BEMTurbineModel']
@@ -72,7 +73,7 @@ def solve_bem_element(bem_model, r, v0, theta_p, omega, a_init=0.0, a_prime_init
         'd_thrust': d_thrust,
         'd_torque': d_torque
     }
- 
+
 def compute_rotor_performance(bem_model, v0, theta_p=None, omega=None):
     """
     Compute overall rotor performance for given operating conditions.
@@ -153,16 +154,16 @@ def plot_results(bem_model):
     true_pow = bem_model.operational_data["aero_power"]
     true_wind = bem_model.operational_data["wind_speed"]
     plt.figure(figsize=(12, 5))
-    
+
     plt.subplot(1, 2, 1)
     plt.plot(power_curve['v0'], power_curve['power']/1e3, color = "blue", label = "BEM Power")
     plt.plot(true_wind, true_pow, color = "red", label = "True Power")
-    plt.legend()    
+    plt.legend()
     plt.xlabel('Wind Speed [m/s]')
     plt.ylabel('Power [kW]')
     plt.title('Power Curve')
     plt.grid(True)
-    
+
     plt.subplot(1, 2, 2)
     plt.plot(power_curve['v0'], power_curve['thrust']/1e3, color = "blue", label = "BEM Thrust")
     plt.plot(true_wind, true_thr, color = "red", label = "True Thrust")
@@ -171,7 +172,6 @@ def plot_results(bem_model):
     plt.ylabel('Thrust [kN]')
     plt.title('Thrust Curve')
     plt.grid(True)
-    
     plt.tight_layout()
     plt.show()
 

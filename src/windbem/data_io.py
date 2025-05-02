@@ -56,8 +56,9 @@ class BEMDataLoader:
             af_coords (list): List of normalized x-y coordinates of airfoil shapes [-].
         """
         default_path = 'inputs/IEA-15-240-RWT/Airfoils/'
+        default_file_name_mask = 'IEA-15-240-RWT_AF*.*'
         if af_coords_file_path is None:
-            af_coords_file_path = list(Path(default_path).glob('IEA-15-240-RWT_AF*.*'))
+            af_coords_file_path = list(Path(default_path).glob(default_file_name_mask))
         af_coords = []
         for file in af_coords_file_path:
             x, y = np.loadtxt(file, skiprows=8, unpack=True)
