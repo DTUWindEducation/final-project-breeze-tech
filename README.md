@@ -1,15 +1,20 @@
 [![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/zjSXGKeR)
-# Our Great Package
+# `windbem` A Blade Element Momentum (BEM) Package 
 
-Team: [ADD TEXT HERE!]
+Team: breeze-tech
 
 ## Overview
 
-[ADD TEXT HERE!]
+`windbem` is a modular Python package designed for modelling wind turbines using the Blade Element Momentum (BEM) method. This method uses blade geometry data, operational conditions and airfoil data to compute and plot the power and thrust curves against wind speed based on the optimal operational strategy.
 
 ## Quick-start guide
 
-[ADD TEXT HERE!]
+1. Clone the git project
+2. In the Anaconda prompt activate an environment that you want to installl the package in or create a new python environment  and activate it
+3. Navigate to the cloned location into the final-project-breeze-tech directory in the anaconda prompt
+4. Install the package locally in the editable mode using `pip install -e .`
+
+Example usage of functions of this package can be found in the `examples` file
 
 ## Architecture
 
