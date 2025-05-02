@@ -1,9 +1,5 @@
-#--------------- import if package not installed ---------------
-import sys
-import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
-#---------------------------------------------------------------
-
+"""Example script demonstrating the direct use of the package's main functions.
+It allows obtaining results in a straightforward way without intermediate steps."""
 from windbem import BEMTurbineModel
 from windbem import compute_rotor_performance
 from windbem import plot_results

@@ -1,17 +1,12 @@
-#--------------- import if package not installed ---------------
-import sys
-import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
-#---------------------------------------------------------------
-
+"""Main example file that demonstrates the main functionalities of the code."""
 from windbem import BEMTurbineModel
 from windbem import plot_results
 from windbem import print_results
-import matplotlib.pyplot as plt
-import numpy as np
 
 def main():
+    """Main function."""
     V0 = 10  # m/s
+
     # 1. Load and parse the provided turbine data.
     bem_model = BEMTurbineModel(
         blade_file ='inputs/IEA-15-240-RWT/IEA-15-240-RWT_AeroDyn15_blade.dat',
@@ -48,7 +43,7 @@ def main():
             # Save old values for convergence check
             a_prev, a_prime_prev = a, a_prime
 
-            # Flow angle (radians) and angle of attack (degrees)
+            # Flow angle (rad) and angle of attack (deg)
             phi = bem_model.get_flow_angle(V0, r, a, a_prime, omega)
             alpha = bem_model.get_angle_attack(phi, theta_p, twist)
 
@@ -59,7 +54,7 @@ def main():
             # Force coefficients (normal and tangential)
             coef_normal, coef_tangent = bem_model.get_cn_ct(coef_lift, coef_drag, phi)
 
-            # 4. Compute (update) the axial and tangential induction factors as function of span 
+            # 4. Compute (update) the axial and tangential induction factors as function of span
             # position, the inflow wind speed, the blade pitch angle and the rotational speed.
             a, a_prime = bem_model.update_induction_factors(phi, sigma, coef_normal, coef_tangent)
 
@@ -68,7 +63,8 @@ def main():
                 break
 
         # Local thrust and torque contributions
-        d_thrust, d_torque = bem_model.get_local_thrust_torque_contributions(V0, r, a, a_prime, omega)
+        d_thrust, d_torque = bem_model.get_local_thrust_torque_contributions(V0, r, a,
+                                                                             a_prime, omega)
 
         elem_result = {
             'r': r,
@@ -95,8 +91,11 @@ def main():
 
     # 5. Compute the thrust, torque, and power of the rotor as function of the inflow
     # wind speed, the blade pitch angle and the rotational speed.
-    total_thrust, total_torque, total_power, thrust_coef, power_coef = bem_model.compute_thrust_torque(V0, results, omega)
-    
+    (
+        total_thrust, total_torque, total_power,
+        thrust_coef, power_coef
+    ) = bem_model.compute_thrust_torque(V0, results, omega)
+
     # End results
     performance = {
         'v0': V0,
@@ -110,12 +109,11 @@ def main():
         'element_results': results
     }
 
-    # 7. Compute and plot power curve and thrust curve based on the 
+    # 7. Compute and plot power curve and thrust curve based on the
     # optimal operational strategy obtained in the previous function.
     plot_results(bem_model)
 
     # EXTRA FUNCTION: Printing results
     print_results(performance)
 
-if __name__ == "__main__":
-    main()
+main()
