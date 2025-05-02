@@ -14,7 +14,7 @@ Team: breeze-tech
 3. Navigate to the cloned location into the final-project-breeze-tech directory in the anaconda prompt
 4. Install the package locally in the editable mode using `pip install -e .`
 
-Example usage of functions of this package can be found in the `examples` file
+Example usage of functions of this package can be found in the `examples` folder
 
 ## Architecture
 
