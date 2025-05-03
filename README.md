@@ -10,7 +10,8 @@ Team: breeze-tech
 ## Quick-start guide
 
 1. Clone the git project
-2. In the Anaconda prompt activate an environment that you want to installl the package in or create a new python environment  and activate it
+2. In the Anaconda prompt activate an environment that you want to installl the package in or create 
+a new python environment  and activate it
 3. Navigate to the cloned location into the final-project-breeze-tech directory in the anaconda prompt
 4. Install the package locally in the editable mode using `pip install -e .`
 
@@ -18,149 +19,75 @@ Example usage of functions of this package can be found in the `examples` folder
 
 ## Architecture
 
-![alt text](architecture.png)
-### \_\_init\_\_.py
+![alt text](diagram.png)  
 
-#### `windbem.define_turbine(blade_file, operational_file, polar_dir)`
-Defines an instance of the `WindTurbine` class with a list of `BladeElement` objects.  **(Requirement 1)**
+Package consists of a constructor file `__init__.py` and modules: `data_io.py` and `compute.py`.  
+In the `examples` folder there are two example scripts: `main.py` (with detailed functionalities of the code) and `short.py` (with main functions without intermediate steps).  
+Two classes are implemented: `BEMDataLoader` (in data_io.py) and `BEMTurbineModel` (in compute.py).
 
-**Returns:**
-```python
-Turbine = {
-  "Wind Turbine": WindTurbine,
-  "Blade Elements": [BladeElement, ...]
-}
-```
+---
+### Classes
 
+#### `BEMDataLoader:`  
+Location: \src\data_io.py  
+A class for loading data from input files, such as blade geometry and operational conditions. It 
+also provides functionality to visualize data, including airfoil shapes. 
 
+Attributes:
+- blade_data (DataFrame): Blade geometry data (span, twist, chord, airfoil IDs)
+- operational_data (DataFrame): Operational strategy data (wind speed vs pitch and RPM)
+- polar_data (list): List of airfoil polar data (Cl, Cd vs alpha)
+- rho (float): Air density (kg/m^3)
+- blade_rad (float): Rotor radius (m)
+- no_blades (int): Number of blades  
 
-#### `windbem.plot_airfoil_shapes(Turbine)`
-Plots airfoil shapes from the given `WindTurbine` object in one plot.  **(Requirement 2)**
+Methods:
+- _load_blade_data(...)
+- _load_operational_data(...)
+- _load_polar_data(...)
+- import_af_shapes(...)
+- plot_af_shapes(...)
 
-
-#### `windbem.solve(Turbine, V0, correction=False)`
-Performs calculations on the `WindTurbine` (+ `BladeElements`) object.  
-Runs all functions from `solver.py` one by one.  
-If `correction=True`, additionally runs functions from `corrections.py`.  
-**(Requirements 3–6)**
-
-- Saves _performance_ (dictionary) as the WindTurbine object's attribute using `save_results()` method.
-- Returns _performance_.
-
-> Eventually, `solver.py` functions can be replaced with object methods.  
-> However, there will be no longer module `solver.py` and `corrections.py` in our package.
-
-
-
-#### `windbem.plot_results(Turbine)`
-Plots power and thrust curves based on the previously obtained optimal operational strategy.  
-**(Requirement 7)**
-
-> Two extra functions to be added, e.g., printing some results.
 
 ---
 
-### classes.py (or defined in \_\_init\_\_.py)
+#### `BEMTurbineModel(BEMDataLoader):`  
+Location: \src\compute.py  
+A class to implement Blade Element Momentum (BEM) theory for wind turbine performance analysis.  
+This class models the aerodynamic performance of a wind turbine rotor using BEM theory, computing 
+key performance metrics like power output, thrust, and torque.  
+It inherits the properties of BEMDataLoader class.
 
-#### `WindTurbine` – class for the wind turbine model
-
-##### `__init__(self, ...):`
-```python
-self.R =
-self.B =
-self.dr =
-```
-
-##### `save_results(self, performance):`
-```python
-self.performance = performance
-```
-
+Methods:
+- get_operational_strategy(...)
+- get_element_spans(...)
+- get_c_twist_afid(...)
+- get_local_solidity(...)
+- get_flow_angle(...)
+- get_angle_attack(...)
+- get_cl_cd(...)
+- get_cn_ct(...)
+- update_induction_factors(...)
+- get_local_thrust_torque_contributions(...)
+- compute_thrust_torque(...)
 ---
 
-#### `BladeElement` – class for blade elements
+### Constructor file (\_\_init\_\_.py)
+Contains package's main functions.
+#### `solve_bem_element(bem_model, r, v0, ...)`  
+Solves BEM equations for a single blade element from `BEMTurbineModel` object for given operating conditions.  
+Runs methods from `BEMTurbineModel` class one by one.  
 
-##### `__init__(self, ...):`
-```python
-self.r =
-self.c =
-self.local_solidity =
-self.twist =
-self.af_id =
-```
+#### `compute_rotor_performance(bem_model, v0, ...)`  
+Computes overall rotor performance for given operating conditions.  
+Runs `solve_bem_element(...)` function on all blade elements and integrates the results.   
 
-##### `save_results(self, results):`
-```python
-self.results = results
-```
+#### `compute_power_curve(bem_model)` - computes power and thrust curves over a range of wind speeds.
 
----
+#### `plot_results(bem_model)` - plots a power curve and thrust curve over a range of wind speeds. 
 
-### Modules (separate files in /src/)
+#### `print_results(performance)` - prints overall rotor performance.  
 
-#### solver.py  
-Contains all functions to compute necessary parameters.  
-**(Requirements 3–6)**
-
-- `windbem.solver.get_opt_strategy(operational_file, V0)` **(Requirement 6)**
-- `windbem.solver.compute_tsr(rot_speed, V0, R)`
-- `windbem.solver.compute_flow_angle(...)`
-- `windbem.solver.compute_angle_attack(...)`
-- `windbem.solver.compute_lift_drag(...)` **(Requirement 3)**
-- `windbem.solver.compute_normal_tangential(...)` **(Requirement 4)**
-- `windbem.solver.update_induction_factors(...)`
-- `windbem.solver.compute_thrust_torque_power(...)` **(Requirement 5)**
-
----
-
-#### corrections.py (optional, could be merged into solver.py)
-Adds functions to apply Prandtl’s tip/hub loss corrections for finite blade effects.
-
-- `windbem.corrections.fun1(...)`
-- `windbem.corrections.fun2(...)`
-
----
-
-### Pseudocode Examples
-
-#### `main.py`
-```python
-Turbine = windbem.define_turbine(blade_file, operational_file, polar_dir)
-V0 = 10
-
-# windbem.solve(Turbine, V0, correction=True)  # This is a shortcut. Below are step-by-step computations:
-
-pitch, rot_speed = windbem.solver.get_opt_strategy(operational_file, V0)
-tsr = windbem.solver.compute_tsr(rot_speed, V0, Turbine['Wind Turbine'].R)
-...
-
-windbem.corrections.fun1(...)
-...
-
-thrust, torque, power, CT, CP = windbem.solver.compute_thrust_torque_power(...)
-
-performance = {...}
-Turbine.save_results(performance)
-
-windbem.plot_airfoil_shapes(Turbine)
-windbem.print_results(Turbine)
-windbem.plot_results(Turbine)
-```
-
----
-
-#### `short.py`
-```python
-Turbine = windbem.define_turbine(blade_file, operational_file, polar_dir)
-V0 = 10
-
-windbem.solve(Turbine, V0, correction=True)
-
-windbem.plot_airfoil_shapes(Turbine)
-windbem.print_results(Turbine)
-windbem.plot_results(Turbine)
-```
-
-## Peer review
-
-[ADD TEXT HERE!]
+## Collaboration
+The team held regular meetings to review progress, troubleshoot issues, and ensure all tasks were integrated into the main branch.
+Pull requests were reviewed to avoid merge conflicts and maintain code quality. Each time a different group member reviwed it.
