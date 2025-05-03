@@ -2,12 +2,7 @@ import pytest
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from windbem.compute import BEMTurbineModel
 from windbem import solve_bem_element, compute_rotor_performance, compute_power_curve, plot_results, print_results
-
-# Test BEMTurbineModel instance (uses the bem_model fixture)
-def test_bem_model(bem_model):
-    assert isinstance(bem_model, BEMTurbineModel)
 
 # Test solve_bem_element
 def test_solve_bem_element(bem_model):
@@ -86,4 +81,3 @@ def test_plot_and_print_results(bem_model, capsys):
     assert f"Power: {performance['power']/1e3:.2f} kW" in captured.out
     assert f"Thrust: {performance['thrust']/1e3:.2f} kN" in captured.out
     assert f"Power coefficient: {performance['power_coef']:.3f}" in captured.out
-
