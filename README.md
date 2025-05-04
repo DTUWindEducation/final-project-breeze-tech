@@ -86,6 +86,8 @@ Runs `solve_bem_element(...)` function on all blade elements and integrates the 
 
 #### `plot_results(bem_model)` - plots a power curve and thrust curve over a range of wind speeds. 
 
+#### `plot_cp_ct_surface(bem_model)` - plots power coefficient and thrust coefficient surfaces as a function of blade pitch and tip speed ratio.  
+
 #### `print_results(performance)` - prints overall rotor performance.  
 
 ## Collaboration
