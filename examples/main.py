@@ -2,6 +2,7 @@
 from windbem import BEMTurbineModel
 from windbem import plot_results
 from windbem import print_results
+from windbem import plot_cp_ct_surface
 
 def main():
     """Main function."""
@@ -113,7 +114,8 @@ def main():
     # optimal operational strategy obtained in the previous function.
     plot_results(bem_model)
 
-    # EXTRA FUNCTION: Printing results
+    # EXTRA FUNCTIONS:
+    plot_cp_ct_surface(bem_model)
     print_results(performance)
 
 main()

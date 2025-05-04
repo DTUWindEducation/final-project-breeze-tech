@@ -1,6 +1,7 @@
 """Constructor file containing general functions such as:
 compute_rotor_performance(), solve_bem_element(), compute_power_curve(),
 plot_results() and print_results()."""
+from scipy.interpolate import griddata
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
@@ -16,6 +17,7 @@ def solve_bem_element(bem_model, r, v0, theta_p, omega, a_init=0.0, a_prime_init
     Solve BEM equations for a single blade element.
         
     Args:
+        bem_model: BEMTurbineModel object.
         r (float): Radial position of element (m)
         v0 (float): Wind speed (m/s)
         theta_p (float): Pitch angle (deg)
@@ -81,6 +83,7 @@ def compute_rotor_performance(bem_model, v0, theta_p=None, omega=None):
     Compute overall rotor performance for given operating conditions.
 
     Args:
+        bem_model: BEMTurbineModel object.
         v0 (float): Wind speed (m/s).
         theta_p (float, optional): Pitch angle (deg). If None, uses operational data.
         omega (float, optional): Rotational speed (rad/s). If None, uses operational data.
@@ -129,7 +132,10 @@ def compute_rotor_performance(bem_model, v0, theta_p=None, omega=None):
 def compute_power_curve(bem_model):
     """
     Compute power and thrust curves over a range of wind speeds.
-        
+    
+    Args:
+        bem_model: BEMTurbineModel object.
+
     Returns:
         DataFrame: Power curve data with columns for wind speed, power, thrust, etc.
     """
@@ -157,6 +163,9 @@ def plot_results(bem_model):
     """
     Plots a power curve and thrust curve based on the optimal
     operational strategy.
+
+    Args:
+        bem_model: BEMTurbineModel object.
     """
     power_curve = compute_power_curve(bem_model)
     true_thr = bem_model.operational_data["aero_thrust"]
@@ -186,8 +195,66 @@ def plot_results(bem_model):
     plt.show()
 
 def print_results(performance):
-    """Prints overall rotor performance."""
+    """Prints overall rotor performance.
+
+    Args:
+        performance (dict): Rotor performance dictionary.
+    """
     print(f"At {performance['v0']} m/s wind speed:")
     print(f"Power: {performance['power']/1e3:.2f} kW")
     print(f"Thrust: {performance['thrust']/1e3:.2f} kN")
     print(f"Power coefficient: {performance['power_coef']:.3f}")
+
+def plot_cp_ct_surface(bem_model):
+    """Compute and plot power coefficient and thrust coefficient surfaces
+    as a function of blade pitch and tip speed ratio.
+
+    Args:
+        bem_model: BEMTurbineModel object.
+    """
+    v0_values = bem_model.operational_data['wind_speed']
+
+    # Tip speed ratio (tsr), blade pitch (theta_p) and power, thrust coefficients
+    tsr = []
+    theta_p = []
+    cp = []
+    ct = []
+
+    for v0 in v0_values:
+        perf = compute_rotor_performance(bem_model, v0)
+        tsr_n = (perf['omega'] * bem_model.blade_rad) / v0
+        tsr.append(tsr_n)
+        theta_p.append(perf['theta_p'])
+        cp.append(perf['power_coef'])
+        ct.append(perf['thrust_coef'])
+
+    theta_p = np.array(theta_p)
+    tsr = np.array(tsr)
+    cp = np.array(cp)
+    ct = np.array(ct)
+
+    # Define grid
+    theta_p_grid = np.linspace(theta_p.min(), theta_p.max(), 50)
+    tsr_grid = np.linspace(tsr.min(), tsr.max(), 50)
+    theta_p_mesh, tsr_mesh = np.meshgrid(theta_p_grid, tsr_grid)
+
+    # Interpolate CP and CT onto the grid
+    cp_grid = griddata((theta_p, tsr), cp, (theta_p_mesh, tsr_mesh), method='cubic')
+    ct_grid = griddata((theta_p, tsr), ct, (theta_p_mesh, tsr_mesh), method='cubic')
+
+    _, axs = plt.subplots(1, 2, figsize=(14, 6), subplot_kw={"projection": "3d"})
+
+    axs[0].plot_surface(theta_p_mesh, tsr_mesh, cp_grid, cmap='viridis')
+    axs[0].set_title('Power Coefficient $C_P$')
+    axs[0].set_xlabel('Blade Pitch (deg)')
+    axs[0].set_ylabel('Tip Speed Ratio (λ)')
+    axs[0].set_zlabel('$C_P$')
+
+    axs[1].plot_surface(theta_p_mesh, tsr_mesh, ct_grid, cmap='plasma')
+    axs[1].set_title('Thrust Coefficient $C_T$')
+    axs[1].set_xlabel('Blade Pitch (deg)')
+    axs[1].set_ylabel('Tip Speed Ratio (λ)')
+    axs[1].set_zlabel('$C_T$')
+
+    plt.tight_layout()
+    plt.show()

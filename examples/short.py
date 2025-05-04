@@ -2,6 +2,7 @@
 It allows obtaining results in a straightforward way without intermediate steps."""
 from windbem import BEMTurbineModel
 from windbem import compute_rotor_performance
+from windbem import plot_cp_ct_surface
 from windbem import plot_results
 from windbem import print_results
 
@@ -16,4 +17,5 @@ V0 = 10  # m/s
 performance = compute_rotor_performance(bem_model, V0)
 bem_model.plot_af_shapes()
 plot_results(bem_model)
+plot_cp_ct_surface(bem_model)
 print_results(performance)
