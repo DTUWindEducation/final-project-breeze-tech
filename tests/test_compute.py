@@ -1,9 +1,8 @@
 import pytest
 import numpy as np
 import pandas as pd
-from windbem.compute import BEMTurbineModel
 
-# Test: Verify that the data is loaded correctly
+# Test: Verify that the BEM model loads blade, operational, and polar data correctly
 def test_bem_data_loader(bem_model):
     assert bem_model.blade_data is not None, "Blade data not loaded!"
     assert bem_model.operational_data is not None, "Operational data not loaded!"
@@ -13,101 +12,128 @@ def test_bem_data_loader(bem_model):
     assert isinstance(bem_model.operational_data, pd.DataFrame), "Operational data is not a DataFrame!"
     assert isinstance(bem_model.polar_data, list), "Airfoil data is not a list!"
 
-# Test: Verify the calculation of Cl and Cd
+# Test: Verify that lift and drag coefficients (Cl and Cd) are correctly computed for valid input
 def test_get_cl_cd(bem_model):
-    af_id = 1  # First airfoil
-    alpha = 5.0  # Angle of attack in degrees
-    
+    af_id = 1
+    alpha = 5.0
     cl, cd = bem_model.get_cl_cd(af_id, alpha)
     
     assert isinstance(cl, float), "Cl is not a float!"
     assert isinstance(cd, float), "Cd is not a float!"
     assert not np.isnan(cl), "Cl is NaN!"
     assert not np.isnan(cd), "Cd is NaN!"
-    
-    # Add boundary tests
-    assert 0 <= cl <= 2, f"Cl out of range: {cl}"  # Cl typically between 0 and 2 for many airfoils
-    assert 0 <= cd <= 1, f"Cd out of range: {cd}"  # Cd typically between 0 and 1
+    assert 0 <= cl <= 2, f"Cl out of range: {cl}"
+    assert 0 <= cd <= 1, f"Cd out of range: {cd}"
 
-# Test: Verify that the induction coefficients (a, a_prime) are calculated correctly
-def test_solve_bem_element(bem_model):
-    r = 30.0  # Radial position (m)
-    V0 = 10.0  # Wind speed (m/s)
-    theta_p = 2.0  # Pitch angle (degrees)
-    omega = 1.0  # Rotational speed (rad/s)
-    
-    result = bem_model.solve_bem_element(r, V0, theta_p, omega)
-    
-    # Verify that the results contain all the necessary calculated parameters
-    assert all(k in result for k in ['a', 'a_prime', 'phi', 'alpha']), "Missing important results!"
-    
-    # Verify that the values are floats and not NaN
-    assert isinstance(result['a'], float) and not np.isnan(result['a']), "Invalid value for 'a'!"
-    assert isinstance(result['a_prime'], float) and not np.isnan(result['a_prime']), "Invalid value for 'a_prime'!"
-    assert isinstance(result['phi'], float) and not np.isnan(result['phi']), "Invalid value for 'phi'!"
-    assert isinstance(result['alpha'], float) and not np.isnan(result['alpha']), "Invalid value for 'alpha'!"
-    
-    # Add checks for the range of induction coefficients
-    assert 0 <= result['a'] <= 1, f"a out of range: {result['a']}"
-    assert 0 <= result['a_prime'] <= 1, f"a_prime out of range: {result['a_prime']}"
-
-# Test: Verify rotor performance calculation
-def test_compute_rotor_performance(bem_model):
-    V0 = 10.0  # Wind speed (m/s)
-    
-    performance = bem_model.compute_rotor_performance(V0)
-    
-    assert 'thrust' in performance, "Thrust not calculated!"
-    assert 'torque' in performance, "Torque not calculated!"
-    assert 'power' in performance, "Power not calculated!"
-    assert 'CT' in performance, "CT not calculated!"
-    assert 'CP' in performance, "CP not calculated!"
-    
-    assert isinstance(performance['thrust'], float), "Thrust is not a float!"
-    assert isinstance(performance['torque'], float), "Torque is not a float!"
-    assert isinstance(performance['power'], float), "Power is not a float!"
-    assert isinstance(performance['CT'], float), "CT is not a float!"
-    assert isinstance(performance['CP'], float), "CP is not a float!"
-    
-    # Add checks for the range of CT and CP
-    assert 0 <= performance['CT'] <= 1, f"CT out of range: {performance['CT']}"
-    assert 0 <= performance['CP'] <= 0.6, f"CP out of range: {performance['CP']}"
-
-# Test: Verify the power curve calculation
-def test_compute_power_curve(bem_model):
-    power_curve = bem_model.compute_power_curve()
-    
-    assert isinstance(power_curve, pd.DataFrame), "Power curve is not a DataFrame!"
-    
-    assert 'V0' in power_curve.columns, "Wind speed (V0) not found in power curve!"
-    assert 'power' in power_curve.columns, "Power not found in power curve!"
-    assert 'thrust' in power_curve.columns, "Thrust not found in power curve!"
-    assert 'torque' in power_curve.columns, "Torque not found in power curve!"
-    assert 'CT' in power_curve.columns, "CT not found in power curve!"
-    assert 'CP' in power_curve.columns, "CP not found in power curve!"
-    
-    assert not power_curve.empty, "Power curve is empty!"
-
-# Test: Verify handling of invalid input in get_cl_cd
+# Test: Verify that invalid airfoil ID raises a TypeError in get_cl_cd
 def test_get_cl_cd_invalid_input(bem_model):
-    # Test with an invalid airfoil ID (e.g., -1 or a non-existing ID)
-    af_id = -1  # Invalid airfoil ID
-    alpha = 5.0  # Angle of attack in degrees
-    
-    # Use pytest.raises to check if an exception is raised
+    af_id = -1
+    alpha = 5.0
     with pytest.raises(TypeError):
-        # This should raise a TypeError since `polar_data` would be None or invalid
         bem_model.get_cl_cd(af_id, alpha)
 
-# Test: Verify the integration of rotor results
-def test_integrate_rotor_results(bem_model):
-    V0 = 10.0  # Wind speed (m/s)
-    performance = bem_model.compute_rotor_performance(V0)
-    
-    # Sum the contributions from each rotor element
-    total_thrust_from_elements = sum(r['dT'] * r['dr'] for r in performance['element_results'])
-    total_torque_from_elements = sum(r['dM'] * r['dr'] for r in performance['element_results'])
-    
-    # Verify that the calculated total is close to the integrated result
-    assert np.isclose(total_thrust_from_elements, performance['thrust'], rtol=1e-2), "Inconsistent total thrust!"
-    assert np.isclose(total_torque_from_elements, performance['torque'], rtol=1e-2), "Inconsistent total torque!"
+# Test: Verify that the operational strategy returns valid pitch and omega for various wind speeds
+def test_get_operational_strategy(bem_model):
+    v0 = 8.0
+    theta_p, omega = bem_model.get_operational_strategy(v0)
+    assert isinstance(theta_p, float)
+    assert isinstance(omega, float)
+    assert omega > 0
+
+    v0_low = 3.0
+    v0_high = 25.0
+    theta_p_low, omega_low = bem_model.get_operational_strategy(v0_low)
+    theta_p_high, omega_high = bem_model.get_operational_strategy(v0_high)
+    assert theta_p_low > 0
+    assert omega_low > 0
+    assert theta_p_high > 0
+    assert omega_high > 0
+
+# Test: Verify that blade element span positions are returned as a positive numpy array
+def test_get_element_spans(bem_model):
+    spans = bem_model.get_element_spans()
+    assert isinstance(spans, np.ndarray)
+    assert len(spans) > 0
+    assert np.all(spans > 0)
+
+
+# Test: Validate correct computation of flow angle from wind, rotor, and induction parameters
+def test_get_flow_angle(bem_model):
+    phi = bem_model.get_flow_angle(v0=10.0, r=10.0, a=0.3, a_prime=0.01, omega=2.0)
+    assert isinstance(phi, float)
+    assert 0 < phi < np.pi / 2
+
+    phi_zero = bem_model.get_flow_angle(v0=10.0, r=10.0, a=0.0, a_prime=0.0, omega=2.0)
+    phi_max = bem_model.get_flow_angle(v0=10.0, r=10.0, a=1.0, a_prime=1.0, omega=2.0)
+    assert phi_zero > 0
+    assert phi_max < np.pi / 2
+
+# Test: Ensure local angle of attack is calculated correctly from flow angle and blade angles
+def test_get_angle_attack(bem_model):
+    phi = np.deg2rad(30)
+    theta_p = 5.0
+    twist = 2.0
+    alpha = bem_model.get_angle_attack(phi, theta_p, twist)
+    assert isinstance(alpha, float)
+    assert -180 <= alpha <= 180
+
+    phi_extreme = np.deg2rad(90)
+    alpha_extreme = bem_model.get_angle_attack(phi_extreme, theta_p, twist)
+    assert -180 <= alpha_extreme <= 180
+
+# Test: Ensure normal and tangential force coefficients are correctly derived from Cl, Cd, and phi
+def test_get_cn_ct(bem_model):
+    cl, cd = 1.0, 0.01
+    phi = np.deg2rad(30)
+    cn, ct = bem_model.get_cn_ct(cl, cd, phi)
+    assert isinstance(cn, float)
+    assert isinstance(ct, float)
+
+# Test: Validate that axial and tangential induction factors are updated and within physical range
+def test_update_induction_factors(bem_model):
+    phi = np.deg2rad(30)
+    sigma = 0.05
+    cn, ct = 1.0, 0.1
+    a, a_prime = bem_model.update_induction_factors(phi, sigma, cn, ct)
+    assert isinstance(a, float)
+    assert isinstance(a_prime, float)
+    assert 0 <= a < 1
+    assert a_prime > 0
+
+# Test: Verify local thrust and torque contributions are calculated and non-negative
+def test_get_local_thrust_torque_contributions(bem_model):
+    v0 = 10.0
+    r = 10.0
+    a = 0.3
+    a_prime = 0.01
+    omega = 2.0
+    dT, dQ = bem_model.get_local_thrust_torque_contributions(v0, r, a, a_prime, omega)
+    assert isinstance(dT, float)
+    assert isinstance(dQ, float)
+    assert dT >= 0
+    assert dQ >= 0
+
+# Test: Check that total thrust, torque, power, and coefficients are correctly integrated
+def test_compute_thrust_torque(bem_model):
+    omega = 2.0
+    v0 = 10.0
+    results = [{'d_thrust': 100.0, 'd_torque': 50.0, 'dr': 1.0} for _ in range(5)]
+    t, q, p, ct, cp = bem_model.compute_thrust_torque(v0, results, omega)
+    assert all(isinstance(val, float) for val in [t, q, p, ct, cp])
+    assert t > 0 and q > 0 and p > 0
+    assert 0 < ct < 2
+    assert 0 < cp < 1
+
+# Test: Ensure that chord, twist, and airfoil ID are returned correctly for a given radial position
+def test_get_c_twist_afid(bem_model):
+    r = 5.0
+    chord, twist, afid = bem_model.get_c_twist_afid(r)
+
+    print(f"Chord: {chord}, Twist: {twist}, Afid: {afid}")
+    assert isinstance(chord, float), f"Expected float for chord, got {type(chord)}"
+    assert isinstance(twist, float), f"Expected float for twist, got {type(twist)}"
+    assert isinstance(afid, (float, np.float64)), f"Expected float for afid, got {type(afid)}"
+    assert afid.is_integer(), f"Expected afid to be an integer-like value, got {afid}"
+    afid = int(afid)
+    assert isinstance(afid, int), f"Expected afid to be an integer, got {type(afid)}"
+    assert afid >= 0, f"Expected non-negative afid, got {afid}"
